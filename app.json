@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "DocumentScanner",
-    "slug": "DocumentScanner",
+    "slug": "docscannerpro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to camera to scan documents",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to save scanned documents"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +25,41 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow DocumentScanner to access your camera to scan documents"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow DocumentScanner to access your photos to save scanned documents",
+          "savePhotosPermission": "Allow DocumentScanner to save scanned documents to your photo library"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "eca517c9-4c48-4f0e-a789-7d4e8a2bbc1b"
+      }
+    },
+    "owner": "nazelahi"
   }
 }

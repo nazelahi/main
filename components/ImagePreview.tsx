@@ -1,0 +1,1040 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Image,
+  Dimensions,
+  ScrollView,
+  Alert,
+  Animated,
+  Modal,
+  StatusBar,
+  Platform,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
+// import * as ImageManipulator from 'expo-image-manipulator';
+import * as MediaLibrary from 'expo-media-library';
+// import * as FileSystem from 'expo-file-system';
+import { getOCREngine, OCRUtils } from '../utils/ocr';
+import { DocumentProcessor } from '../utils/imageProcessing';
+import * as Clipboard from 'expo-clipboard';
+import * as Sharing from 'expo-sharing';
+import { DesignSystem, createGradientStyle, createTextStyle, createShadowStyle } from '../config/designSystem';
+import QuickExportModal from './QuickExportModal';
+import DocumentClassificationModal from './DocumentClassificationModal';
+import { DocumentData } from '../utils/enhancedExport';
+import { classifyDocument } from '../utils/aiFeatures';
+
+const { width, height } = Dimensions.get('window');
+
+interface ImagePreviewProps {
+  imageUri: string;
+  onSave: () => void;
+  onRetake: () => void;
+  onBack: () => void;
+  onAdvancedOCR?: () => void;
+}
+
+type EnhancementType = 'original' | 'grayscale' | 'blackwhite' | 'enhanced' | 'contrast' | 'sharpen';
+
+const ImagePreview: React.FC<ImagePreviewProps> = ({ imageUri, onSave, onRetake, onBack, onAdvancedOCR }) => {
+  const [currentImageUri, setCurrentImageUri] = useState(imageUri);
+  const [currentEnhancement, setCurrentEnhancement] = useState<EnhancementType>('original');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showEnhancements, setShowEnhancements] = useState(false);
+  const [showOCR, setShowOCR] = useState(false);
+  const [ocrText, setOcrText] = useState<string>('');
+  const [isOCRLoading, setIsOCRLoading] = useState(false);
+  const [showQuickExport, setShowQuickExport] = useState(false);
+  const [showClassification, setShowClassification] = useState(false);
+  const [documentClassification, setDocumentClassification] = useState<any>(null);
+  
+  // Animation values
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(50));
+  const [scaleAnim] = useState(new Animated.Value(0.9));
+  
+  // Floating animation refs
+  const floatingAnim1 = useRef(new Animated.Value(0)).current;
+  const floatingAnim2 = useRef(new Animated.Value(0)).current;
+  const floatingAnim3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Entrance animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Floating animations
+    const createFloatingAnimation = (animValue: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: 3000 + delay * 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: 3000 + delay * 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    createFloatingAnimation(floatingAnim1, 0).start();
+    createFloatingAnimation(floatingAnim2, 1).start();
+    createFloatingAnimation(floatingAnim3, 2).start();
+  }, []);
+
+  const enhanceImage = async (enhancementType: EnhancementType) => {
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    setCurrentEnhancement(enhancementType);
+
+    try {
+      console.log(`Applying ${enhancementType} enhancement...`);
+      
+      let enhancedImageUri: string;
+
+      switch (enhancementType) {
+        case 'grayscale':
+          enhancedImageUri = await DocumentProcessor.enhanceDocument(imageUri, {
+            grayscale: 100,
+            autoColorDetection: true,
+            contrast: 1.2,
+            brightness: 0.1
+          });
+          break;
+        case 'blackwhite':
+          enhancedImageUri = await DocumentProcessor.binarizeDocument(imageUri);
+          break;
+        case 'enhanced':
+          enhancedImageUri = await DocumentProcessor.enhanceDocument(imageUri, {
+            contrast: 1.3,
+            brightness: 0.15,
+            sharpen: true,
+            removeShadows: true,
+            autoColorDetection: true
+          });
+          break;
+        case 'contrast':
+          enhancedImageUri = await DocumentProcessor.enhanceDocument(imageUri, {
+            contrast: 1.5,
+            brightness: 0.2,
+            autoColorDetection: true
+          });
+          break;
+        case 'sharpen':
+          enhancedImageUri = await DocumentProcessor.enhanceDocument(imageUri, {
+            sharpen: true,
+            contrast: 1.2,
+            brightness: 0.1,
+            autoColorDetection: true
+          });
+          break;
+        default:
+          setCurrentImageUri(imageUri);
+          setIsProcessing(false);
+          return;
+      }
+
+      console.log(`${enhancementType} enhancement completed successfully`);
+      setCurrentImageUri(enhancedImageUri);
+    } catch (error) {
+      console.error('Error enhancing image:', error);
+      Alert.alert('Error', 'Failed to enhance image');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const saveToGallery = async () => {
+    try {
+      const asset = await MediaLibrary.createAssetAsync(currentImageUri);
+      Alert.alert('Success', 'Document saved to gallery!');
+      onSave();
+    } catch (error) {
+      console.error('Error saving image:', error);
+      Alert.alert('Error', 'Failed to save document');
+    }
+  };
+
+  const shareDocument = async () => {
+    // In a real app, you would implement sharing functionality
+    Alert.alert('Share', 'Sharing functionality would be implemented here');
+  };
+
+  const extractText = async () => {
+    if (isOCRLoading) return;
+    
+    setIsOCRLoading(true);
+    setShowOCR(true);
+    
+    try {
+      const ocrEngine = await getOCREngine();
+      const result = await ocrEngine.detectText(currentImageUri);
+      setOcrText(result.text);
+    } catch (error) {
+      console.error('Error extracting text:', error);
+      Alert.alert('Error', 'Failed to extract text from document. Please try again.');
+    } finally {
+      setIsOCRLoading(false);
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await Clipboard.setStringAsync(ocrText);
+      Alert.alert('Success', 'Text copied to clipboard');
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      Alert.alert('Error', 'Failed to copy text to clipboard');
+    }
+  };
+
+  const shareText = async () => {
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(ocrText, {
+          mimeType: 'text/plain',
+          dialogTitle: 'Share Extracted Text',
+        });
+      } else {
+        Alert.alert('Error', 'Sharing is not available on this device');
+      }
+    } catch (error) {
+      console.error('Error sharing text:', error);
+      Alert.alert('Error', 'Failed to share text');
+    }
+  };
+
+  const handleQuickExport = () => {
+    setShowQuickExport(true);
+  };
+
+  const handleAIClassification = async () => {
+    try {
+      const documentData = createDocumentData();
+      const classification = await classifyDocument(documentData, ocrText ? {
+        text: ocrText,
+        confidence: 0.9,
+        boundingBoxes: [],
+        language: 'en',
+        processingTime: 1000,
+        handwriting: {
+          text: ocrText,
+          confidence: 0.8,
+          isHandwritten: false,
+          boundingBoxes: [],
+          language: 'en'
+        },
+        tables: {
+          tables: [],
+          confidence: 0,
+          processingTime: 0
+        },
+        structure: {
+          paragraphs: [ocrText],
+          tables: [],
+          lists: [],
+          headers: [],
+          footers: [],
+          confidence: 0.8
+        },
+        entities: []
+      } : undefined);
+      
+      setDocumentClassification(classification);
+      setShowClassification(true);
+    } catch (error) {
+      console.error('AI classification failed:', error);
+      Alert.alert('Error', 'Failed to classify document. Please try again.');
+    }
+  };
+
+  const createDocumentData = (): DocumentData => {
+    return {
+      id: `doc_${Date.now()}`,
+      uri: currentImageUri,
+      title: 'Scanned Document',
+      timestamp: Date.now(),
+      ocrResult: ocrText ? {
+        text: ocrText,
+        confidence: 0.9,
+        boundingBoxes: [],
+        language: 'en',
+        processingTime: 1000,
+        handwriting: {
+          text: ocrText,
+          confidence: 0.8,
+          isHandwritten: false,
+          boundingBoxes: [],
+          language: 'en'
+        },
+        tables: {
+          tables: [],
+          confidence: 0,
+          processingTime: 0
+        },
+        structure: {
+          paragraphs: [ocrText],
+          tables: [],
+          lists: [],
+          headers: [],
+          footers: [],
+          confidence: 0.8
+        },
+        entities: []
+      } : undefined,
+      metadata: {
+        fileSize: 0,
+        dimensions: { width: 1200, height: 1600 },
+        quality: 0.8
+      }
+    };
+  };
+
+  const renderEnhancementButtons = () => {
+    const enhancements = [
+      { type: 'original' as EnhancementType, label: 'Original', icon: 'image', colors: ['#6B7280', '#4B5563'] },
+      { type: 'grayscale' as EnhancementType, label: 'Grayscale', icon: 'contrast', colors: ['#3B82F6', '#1D4ED8'] },
+      { type: 'blackwhite' as EnhancementType, label: 'B&W', icon: 'radio-button-off', colors: ['#1F2937', '#111827'] },
+      { type: 'enhanced' as EnhancementType, label: 'Enhanced', icon: 'sparkles', colors: ['#10B981', '#059669'] },
+      { type: 'contrast' as EnhancementType, label: 'Contrast', icon: 'sunny', colors: ['#F59E0B', '#D97706'] },
+      { type: 'sharpen' as EnhancementType, label: 'Sharpen', icon: 'flash', colors: ['#8B5CF6', '#7C3AED'] },
+    ];
+
+    return (
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.enhancementContainer}
+        contentContainerStyle={styles.enhancementContent}
+      >
+        {enhancements.map((enhancement) => (
+          <TouchableOpacity
+            key={enhancement.type}
+            style={[
+              styles.glassButtonSmall,
+              currentEnhancement === enhancement.type && styles.glassButtonActive
+            ]}
+            onPress={() => enhanceImage(enhancement.type)}
+            disabled={isProcessing}
+          >
+            <View style={styles.glassButtonContent}>
+              <Ionicons
+                name={enhancement.icon as any}
+                size={16}
+                color="white"
+              />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      
+      {/* Background Gradient */}
+      <LinearGradient
+        {...createGradientStyle(DesignSystem.colors.gradients.primary)}
+        style={styles.backgroundGradient}
+      />
+      
+      {/* Floating Background Elements */}
+      <Animated.View
+        style={[
+          styles.floatingElement1,
+          {
+            transform: [
+              {
+                translateY: floatingAnim1.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -20],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.floatingElement2,
+          {
+            transform: [
+              {
+                translateY: floatingAnim2.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -15],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.floatingElement3,
+          {
+            transform: [
+              {
+                translateY: floatingAnim3.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -25],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        {/* Header */}
+        <Animated.View
+          style={[
+            styles.header,
+            {
+              transform: [
+                {
+                  translateY: slideAnim,
+                },
+              ],
+            },
+          ]}
+        >
+          <BlurView intensity={30} style={styles.headerBlur}>
+            <View style={styles.headerControls}>
+              <TouchableOpacity style={styles.headerButton} onPress={onBack}>
+                <BlurView intensity={20} style={styles.headerButtonBlur}>
+                  <Ionicons name="arrow-back" size={20} color="rgba(255,255,255,0.9)" />
+                </BlurView>
+              </TouchableOpacity>
+              
+              <Text style={styles.headerTitle}>Preview</Text>
+              
+              <TouchableOpacity 
+                style={styles.headerButton} 
+                onPress={() => setShowEnhancements(!showEnhancements)}
+              >
+                <BlurView intensity={20} style={styles.headerButtonBlur}>
+                  <Ionicons name="options" size={20} color="rgba(255,255,255,0.9)" />
+                </BlurView>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </Animated.View>
+
+        {/* Image */}
+        <Animated.View 
+          style={[
+            styles.imageContainer,
+            {
+              transform: [
+                {
+                  translateY: slideAnim,
+                },
+                {
+                  scale: scaleAnim,
+                },
+              ],
+            },
+          ]}
+        >
+          <BlurView intensity={10} style={styles.imageBlurContainer}>
+            <Image source={{ uri: currentImageUri }} style={styles.image} resizeMode="contain" />
+          </BlurView>
+          
+          {isProcessing && (
+            <BlurView intensity={20} style={styles.processingOverlay}>
+              <View style={styles.processingIndicator}>
+                <Ionicons name="hourglass" size={30} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.processingText}>Processing...</Text>
+              </View>
+            </BlurView>
+          )}
+        </Animated.View>
+
+        {/* Enhancement Controls */}
+        {showEnhancements && (
+          <Animated.View
+            style={[
+              styles.enhancementPanel,
+              {
+                transform: [
+                  {
+                    translateY: slideAnim,
+                  },
+                ],
+              },
+            ]}
+          >
+            <BlurView intensity={20} style={styles.enhancementPanelBlur}>
+              <Text style={styles.enhancementTitle}>Enhance Document</Text>
+              {renderEnhancementButtons()}
+            </BlurView>
+          </Animated.View>
+        )}
+
+        {/* Bottom Controls - Compact and Organized */}
+        <Animated.View
+          style={[
+            styles.bottomControls,
+            {
+              transform: [
+                {
+                  translateY: slideAnim,
+                },
+              ],
+            },
+          ]}
+        >
+          <BlurView intensity={25} style={styles.bottomControlsBlur}>
+            {/* Primary Actions Row */}
+            <View style={styles.primaryActionsRow}>
+              <TouchableOpacity style={styles.glassButton} onPress={saveToGallery}>
+                <BlurView intensity={15} style={styles.glassButtonBlur}>
+                  <Ionicons name="save" size={20} color="rgba(255,255,255,0.9)" />
+                </BlurView>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.glassButton} onPress={onRetake}>
+                <BlurView intensity={15} style={styles.glassButtonBlur}>
+                  <Ionicons name="camera" size={20} color="rgba(255,255,255,0.9)" />
+                </BlurView>
+              </TouchableOpacity>
+            </View>
+
+            {/* Secondary Actions Row */}
+            <View style={styles.secondaryActionsRow}>
+              <TouchableOpacity style={styles.glassButtonSmall} onPress={extractText}>
+                <BlurView intensity={15} style={styles.glassButtonSmallBlur}>
+                  <Ionicons name="text" size={16} color="rgba(255,255,255,0.9)" />
+                </BlurView>
+              </TouchableOpacity>
+              
+              {onAdvancedOCR && (
+                <TouchableOpacity style={styles.glassButtonSmall} onPress={onAdvancedOCR}>
+                  <BlurView intensity={15} style={styles.glassButtonSmallBlur}>
+                    <Ionicons name="analytics" size={16} color="rgba(255,255,255,0.9)" />
+                  </BlurView>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity style={styles.glassButtonSmall} onPress={handleAIClassification}>
+                <BlurView intensity={15} style={styles.glassButtonSmallBlur}>
+                  <Ionicons name="sparkles" size={16} color="rgba(255,255,255,0.9)" />
+                </BlurView>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.glassButtonSmall} onPress={handleQuickExport}>
+                <BlurView intensity={15} style={styles.glassButtonSmallBlur}>
+                  <Ionicons name="download" size={16} color="rgba(255,255,255,0.9)" />
+                </BlurView>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.glassButtonSmall} onPress={shareDocument}>
+                <BlurView intensity={15} style={styles.glassButtonSmallBlur}>
+                  <Ionicons name="share" size={16} color="rgba(255,255,255,0.9)" />
+                </BlurView>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </Animated.View>
+      </Animated.View>
+
+      {/* OCR Modal */}
+      <Modal
+        visible={showOCR}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowOCR(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.ocrModal}>
+            <View style={styles.ocrHeader}>
+              <Text style={styles.ocrTitle}>Extracted Text</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowOCR(false)}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.ocrContent}>
+              {isOCRLoading ? (
+                <View style={styles.ocrLoading}>
+                  <Ionicons name="hourglass" size={30} color="#007AFF" />
+                  <Text style={styles.ocrLoadingText}>Extracting text...</Text>
+                </View>
+              ) : (
+                <Text style={styles.ocrText}>{ocrText}</Text>
+              )}
+            </ScrollView>
+            
+            <View style={styles.ocrActions}>
+              <TouchableOpacity
+                style={styles.ocrButton}
+                onPress={copyToClipboard}
+              >
+                <Ionicons name="copy" size={20} color="white" />
+                <Text style={styles.ocrButtonText}>Copy</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.ocrButton, styles.ocrButtonPrimary]}
+                onPress={shareText}
+              >
+                <Ionicons name="share" size={20} color="white" />
+                <Text style={styles.ocrButtonText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      {/* OCR Modal */}
+      <Modal
+        visible={showOCR}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowOCR(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.ocrModal}>
+            <View style={styles.ocrHeader}>
+              <Text style={styles.ocrTitle}>Extracted Text</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowOCR(false)}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.ocrContent}>
+              {isOCRLoading ? (
+                <View style={styles.ocrLoading}>
+                  <Ionicons name="hourglass" size={30} color="#007AFF" />
+                  <Text style={styles.ocrLoadingText}>Extracting text...</Text>
+                </View>
+              ) : (
+                <Text style={styles.ocrText}>{ocrText}</Text>
+              )}
+            </ScrollView>
+            
+            <View style={styles.ocrActions}>
+              <TouchableOpacity
+                style={styles.ocrButton}
+                onPress={copyToClipboard}
+              >
+                <Ionicons name="copy" size={20} color="white" />
+                <Text style={styles.ocrButtonText}>Copy</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.ocrButton, styles.ocrButtonPrimary]}
+                onPress={shareText}
+              >
+                <Ionicons name="share" size={20} color="white" />
+                <Text style={styles.ocrButtonText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Quick Export Modal */}
+      <QuickExportModal
+        visible={showQuickExport}
+        onClose={() => setShowQuickExport(false)}
+        document={createDocumentData()}
+        onExportComplete={(result) => {
+          console.log('Export completed:', result);
+          setShowQuickExport(false);
+        }}
+      />
+
+      {/* Document Classification Modal */}
+      <DocumentClassificationModal
+        visible={showClassification}
+        onClose={() => setShowClassification(false)}
+        document={createDocumentData()}
+        ocrResult={ocrText ? {
+          text: ocrText,
+          confidence: 0.9,
+          boundingBoxes: [],
+          language: 'en',
+          processingTime: 1000,
+          handwriting: {
+            text: ocrText,
+            confidence: 0.8,
+            isHandwritten: false,
+            boundingBoxes: [],
+            language: 'en'
+          },
+          tables: {
+            tables: [],
+            confidence: 0,
+            processingTime: 0
+          },
+          structure: {
+            paragraphs: [ocrText],
+            tables: [],
+            lists: [],
+            headers: [],
+            footers: [],
+            confidence: 0.8
+          },
+          entities: []
+        } : undefined}
+        onActionPress={(action) => {
+          console.log('AI action pressed:', action);
+          setShowClassification(false);
+        }}
+        onCategoryChange={(category) => {
+          console.log('Category changed to:', category);
+        }}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  floatingElement1: {
+    position: 'absolute',
+    top: 100,
+    right: 30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  floatingElement2: {
+    position: 'absolute',
+    top: 200,
+    left: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  floatingElement3: {
+    position: 'absolute',
+    top: 300,
+    right: 50,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  content: {
+    flex: 1,
+  },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 30,
+    paddingHorizontal: 0,
+  },
+  headerBlur: {
+    borderBottomLeftRadius: DesignSystem.borderRadius['2xl'],
+    borderBottomRightRadius: DesignSystem.borderRadius['2xl'],
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderTopWidth: 0,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: DesignSystem.spacing.xl,
+    paddingVertical: DesignSystem.spacing.xl,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  headerButtonBlur: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  headerTitle: {
+    ...createTextStyle('lg', 'bold'),
+    color: DesignSystem.colors.textInverse,
+  },
+  imageContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 0,
+    paddingBottom: 170,
+  },
+  imageBlurContainer: {
+    borderRadius: DesignSystem.borderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  image: {
+    width,
+    height: height * 0.6,
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  processingIndicator: {
+    alignItems: 'center',
+  },
+  processingText: {
+    ...createTextStyle('base', 'normal'),
+    color: DesignSystem.colors.textInverse,
+    marginTop: DesignSystem.spacing.sm,
+  },
+  enhancementPanel: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: DesignSystem.spacing.xl,
+    zIndex: 5,
+  },
+  enhancementPanelBlur: {
+    borderRadius: DesignSystem.borderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: DesignSystem.spacing.lg,
+  },
+  enhancementTitle: {
+    ...createTextStyle('base', 'bold'),
+    color: DesignSystem.colors.textInverse,
+    textAlign: 'center',
+    marginBottom: DesignSystem.spacing.lg,
+    paddingHorizontal: DesignSystem.spacing.lg,
+  },
+  enhancementContainer: {
+    maxHeight: 60,
+  },
+  enhancementContent: {
+    paddingHorizontal: DesignSystem.spacing.lg,
+    alignItems: 'center',
+    gap: DesignSystem.spacing.sm,
+  },
+  bottomControls: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+    zIndex: 10,
+    paddingHorizontal: DesignSystem.spacing.lg,
+    paddingVertical: DesignSystem.spacing.lg,
+    paddingBottom: 20,
+  },
+  bottomControlsBlur: {
+    borderRadius: DesignSystem.borderRadius['2xl'],
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  primaryActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: DesignSystem.spacing.md,
+    gap: DesignSystem.spacing.lg,
+  },
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: DesignSystem.spacing.sm,
+  },
+  glassButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  glassButtonSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  glassButtonHeader: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  glassButtonBlur: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  glassButtonSmallBlur: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  glassButtonContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  glassButtonActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: 'rgba(16, 185, 129, 0.5)',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ocrModal: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: DesignSystem.borderRadius['2xl'],
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    width: '90%',
+    maxHeight: '80%',
+    margin: DesignSystem.spacing.xl,
+  },
+  ocrHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: DesignSystem.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.2)',
+  },
+  ocrTitle: {
+    ...createTextStyle('lg', 'bold'),
+    color: DesignSystem.colors.textInverse,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ocrContent: {
+    flex: 1,
+    padding: DesignSystem.spacing.lg,
+  },
+  ocrLoading: {
+    alignItems: 'center',
+    padding: DesignSystem.spacing.xl,
+  },
+  ocrLoadingText: {
+    ...createTextStyle('base', 'normal'),
+    color: DesignSystem.colors.textInverse,
+    marginTop: DesignSystem.spacing.sm,
+  },
+  ocrText: {
+    ...createTextStyle('base', 'normal'),
+    color: DesignSystem.colors.textInverse,
+    lineHeight: DesignSystem.typography.lineHeights.relaxed * DesignSystem.typography.sizes.base,
+  },
+  ocrActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: DesignSystem.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+  },
+  ocrButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: DesignSystem.spacing.lg,
+    paddingVertical: DesignSystem.spacing.sm,
+    borderRadius: DesignSystem.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  ocrButtonPrimary: {
+    backgroundColor: DesignSystem.colors.primary,
+  },
+  ocrButtonText: {
+    ...createTextStyle('sm', 'medium'),
+    color: DesignSystem.colors.textInverse,
+    marginLeft: DesignSystem.spacing.xs,
+  },
+});
+
+export default ImagePreview;
