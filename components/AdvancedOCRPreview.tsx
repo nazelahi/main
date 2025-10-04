@@ -49,8 +49,8 @@ export default function AdvancedOCRPreview({ imageUri, onBack, onSave }: Advance
   const initializeOCR = async () => {
     try {
       const engine = createAdvancedOCREngine({
-        provider: 'mock', // Change to 'google', 'aws', or 'azure' for real cloud OCR
-        apiKey: process.env.OCR_API_KEY
+        provider: 'google', // Using Google Cloud Vision for real OCR
+        apiKey: process.env.OCR_API_KEY || 'YOUR_GOOGLE_VISION_API_KEY'
       });
       await engine.initialize();
       setOcrEngine(engine);

@@ -279,10 +279,10 @@ export class AdvancedOCR {
    */
   private initializeSettings(): void {
     this.currentSettings = {
-      language: 'en',
-      engine: 'google',
-      confidenceThreshold: 0.7,
-      enableHandwriting: true,
+    language: 'en',
+    engine: 'google', // Using Google Cloud Vision for real OCR
+    confidenceThreshold: 0.7,
+    enableHandwriting: true,
       enableRealTime: true,
       enableTextDetection: true,
       enableLanguageDetection: true,
