@@ -48,10 +48,10 @@ export default function AdvancedOCRPreview({ imageUri, onBack, onSave }: Advance
 
   const initializeOCR = async () => {
     try {
-      const engine = createAdvancedOCREngine({
-        provider: 'google', // Using Google Cloud Vision for real OCR
-        apiKey: process.env.OCR_API_KEY || 'YOUR_GOOGLE_VISION_API_KEY'
-      });
+        const engine = createAdvancedOCREngine({
+          provider: 'google', // Using Google Cloud Vision for real OCR
+          apiKey: process.env.OCR_API_KEY || process.env.EXPO_PUBLIC_OCR_API_KEY || 'YOUR_GOOGLE_VISION_API_KEY'
+        });
       await engine.initialize();
       setOcrEngine(engine);
     } catch (error) {

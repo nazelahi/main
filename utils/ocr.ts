@@ -369,10 +369,10 @@ export class TesseractOCR implements OCREngine {
       
       // Use the cloud OCR service as a fallback
       const { createCloudOCREngine } = await import('./cloudOCR');
-      const cloudEngine = createCloudOCREngine({
-        provider: 'google', // Use Google Cloud Vision as fallback
-        apiKey: process.env.OCR_API_KEY || 'YOUR_GOOGLE_VISION_API_KEY'
-      });
+    const cloudEngine = createCloudOCREngine({
+      provider: 'google', // Use Google Cloud Vision as fallback
+      apiKey: process.env.OCR_API_KEY || process.env.EXPO_PUBLIC_OCR_API_KEY || 'YOUR_GOOGLE_VISION_API_KEY'
+    });
 
       const result = await cloudEngine.detectText(imageUri);
       
@@ -430,10 +430,10 @@ export async function getOCREngine(): Promise<OCREngine> {
   if (!globalOCREngine) {
     try {
       // Use cloud OCR engine for React Native compatibility
-      const cloudEngine = createCloudOCREngine({
-        provider: 'google', // Using Google Cloud Vision for real cloud OCR
-        apiKey: process.env.OCR_API_KEY || 'YOUR_GOOGLE_VISION_API_KEY' // Set your API key in environment variables
-      });
+    const cloudEngine = createCloudOCREngine({
+      provider: 'google', // Using Google Cloud Vision for real cloud OCR
+      apiKey: process.env.OCR_API_KEY || process.env.EXPO_PUBLIC_OCR_API_KEY || 'YOUR_GOOGLE_VISION_API_KEY' // Set your API key in environment variables
+    });
       
       // Wrap cloud engine to match OCREngine interface
       globalOCREngine = {
