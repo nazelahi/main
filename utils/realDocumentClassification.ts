@@ -1,5 +1,5 @@
 import { ImageManipulator } from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback } from './filesystem';
 
 export interface DocumentType {
   id: string;
@@ -219,8 +219,7 @@ export class RealDocumentClassification {
   }> {
     try {
       // Get image information
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Perform real image analysis
       const [
@@ -486,15 +485,13 @@ export class RealDocumentClassification {
   // Real analysis methods (simplified implementations)
   private async detectTextRegions(imageUri: string): Promise<number> {
     // Simulate text region detection
-    const fileInfo = await FileSystem.getInfoAsync(imageUri);
-    const fileSize = fileInfo.size || 0;
+    const fileSize = await getFileSizeWithFallback(imageUri, 0);
     return Math.floor(fileSize / 50000) + 2; // 2-20 regions based on file size
   }
 
   private async detectLogoRegions(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Analyze image for logo-like features
       const logoFeatures = await this.analyzeLogoFeatures(imageUri, fileSize);
@@ -605,8 +602,7 @@ export class RealDocumentClassification {
 
   private async detectSignatureRegions(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Analyze image for signature-like features
       const signatureFeatures = await this.analyzeSignatureFeatures(imageUri, fileSize);
@@ -715,8 +711,7 @@ export class RealDocumentClassification {
 
   private async detectTableRegions(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Analyze image for table-like features
       const tableFeatures = await this.analyzeTableFeatures(imageUri, fileSize);
@@ -826,8 +821,7 @@ export class RealDocumentClassification {
 
   private async detectBarcodeRegions(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Analyze image for barcode-like features
       const barcodeFeatures = await this.analyzeBarcodeFeatures(imageUri, fileSize);
@@ -912,8 +906,7 @@ export class RealDocumentClassification {
 
   private async detectPhotoRegions(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Analyze image for photo-like features
       const photoFeatures = await this.analyzePhotoFeatures(imageUri, fileSize);
@@ -998,8 +991,7 @@ export class RealDocumentClassification {
 
   private async calculateTextDensity(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;
@@ -1036,8 +1028,7 @@ export class RealDocumentClassification {
 
   private async calculateColorComplexity(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;
@@ -1074,8 +1065,7 @@ export class RealDocumentClassification {
 
   private async calculateLayoutComplexity(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;
@@ -1112,8 +1102,7 @@ export class RealDocumentClassification {
 
   private async calculateAspectRatio(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;
@@ -1134,8 +1123,7 @@ export class RealDocumentClassification {
 
   private async analyzeDominantColors(imageUri: string): Promise<string[]> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Analyze dominant colors based on image characteristics
       const dominantColors = this.calculateDominantColors(fileSize);
@@ -1185,8 +1173,7 @@ export class RealDocumentClassification {
 
   private async extractTextContent(imageUri: string): Promise<string> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Analyze text content based on image characteristics
       const textContent = this.generateTextContent(fileSize);
@@ -1218,8 +1205,7 @@ export class RealDocumentClassification {
 
   private async identifyStructuralElements(imageUri: string): Promise<string[]> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Analyze structural elements based on image characteristics
       const structuralElements = this.identifyDocumentElements(fileSize);
@@ -1270,8 +1256,7 @@ export class RealDocumentClassification {
     noiseLevel: number;
   }> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;

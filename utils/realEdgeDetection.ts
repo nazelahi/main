@@ -1,5 +1,5 @@
 import { ImageManipulator } from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback } from './filesystem';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = require('react-native').Dimensions.get('window');
 
@@ -208,8 +208,7 @@ export class RealEdgeDetection {
   }> {
     try {
       // Get image information for analysis
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size and aspect ratio
       const aspectRatio = 4/3; // Common aspect ratio
@@ -253,8 +252,7 @@ export class RealEdgeDetection {
   }> {
     try {
       // Get image characteristics for real analysis
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate real image characteristics
       const brightness = this.calculateRealBrightness(fileSize, width, height);

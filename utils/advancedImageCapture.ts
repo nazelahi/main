@@ -1,5 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback, fileExists } from './filesystem';
 import { DocumentCorners } from './enhancedEdgeDetection';
 
 export interface CaptureSettings {

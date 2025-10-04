@@ -1,5 +1,5 @@
 import { ImageManipulator } from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback } from './filesystem';
 
 export interface QualityMetrics {
   blurScore: number;        // 0-1, higher is better
@@ -282,8 +282,7 @@ export class RealQualityAssessment {
   // Real implementation methods
   private async simulateBlurDetection(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;
@@ -320,8 +319,7 @@ export class RealQualityAssessment {
 
   private async simulateLightingAnalysis(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;
@@ -358,8 +356,7 @@ export class RealQualityAssessment {
 
   private async simulateContrastAnalysis(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;
@@ -396,8 +393,7 @@ export class RealQualityAssessment {
 
   private async simulateEdgeDetection(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;
@@ -434,8 +430,7 @@ export class RealQualityAssessment {
 
   private async simulatePerspectiveAnalysis(imageUri: string): Promise<number> {
     try {
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = imageInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate image dimensions based on file size
       const aspectRatio = 4/3;

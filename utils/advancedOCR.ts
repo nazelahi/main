@@ -1,5 +1,5 @@
 import { Dimensions } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback, fileExists } from './filesystem';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -309,8 +309,7 @@ export class AdvancedOCR {
       const ocrSettings = { ...this.currentSettings, ...settings };
       
       // Validate image
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      if (!imageInfo.exists) {
+      if (!(await fileExists(imageUri))) {
         throw new Error('Image file does not exist');
       }
 

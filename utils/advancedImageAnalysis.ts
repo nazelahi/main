@@ -1,5 +1,5 @@
 import { ImageManipulator } from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback } from './filesystem';
 
 export interface ImageAnalysisResult {
   width: number;
@@ -135,8 +135,7 @@ export class AdvancedImageAnalysis {
     try {
       // In a real implementation, you would use a proper image library
       // For now, we'll simulate based on file size and return reasonable dimensions
-      const fileInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = fileInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Estimate dimensions based on file size (rough approximation)
       const estimatedPixels = fileSize / 3; // Assuming 3 bytes per pixel
@@ -195,8 +194,7 @@ export class AdvancedImageAnalysis {
     try {
       // Simulate brightness calculation
       // In real implementation, calculate mean pixel value
-      const fileInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = fileInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Use file size as a proxy for brightness (larger files often have more detail)
       const normalizedSize = Math.min(1, fileSize / 1000000); // Normalize to 0-1
@@ -230,8 +228,7 @@ export class AdvancedImageAnalysis {
     try {
       // Simulate sharpness calculation using Laplacian variance
       // In real implementation, apply Laplacian filter and calculate variance
-      const fileInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = fileInfo.size || 0;
+      const fileSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Larger files often indicate sharper images
       const sharpness = Math.min(1, fileSize / 500000); // Normalize based on file size

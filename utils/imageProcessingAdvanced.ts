@@ -1,5 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback, fileExists } from './filesystem';
 import { DocumentCorners } from './enhancedEdgeDetection';
 
 export interface CropOptions {
@@ -77,8 +77,7 @@ export class AdvancedImageProcessor {
       console.log('Starting image cropping...');
       
       // Get original image info
-      const originalInfo = await FileSystem.getInfoAsync(imageUri);
-      const originalSize = originalInfo.exists ? originalInfo.size || 0 : 0;
+      const originalSize = await getFileSizeWithFallback(imageUri, 0);
       
       // Calculate crop dimensions
       const { x, y, width, height, maintainAspectRatio, aspectRatio } = cropOptions;
@@ -114,8 +113,7 @@ export class AdvancedImageProcessor {
       );
       
       // Get processed image info
-      const processedInfo = await FileSystem.getInfoAsync(result.uri);
-      const fileSize = processedInfo.exists ? processedInfo.size || 0 : 0;
+      const fileSize = await getFileSizeWithFallback(result.uri, 0);
       
       const processingTime = Date.now() - startTime;
       const compressionRatio = originalSize > 0 ? fileSize / originalSize : 1;
@@ -162,8 +160,7 @@ export class AdvancedImageProcessor {
       console.log('Starting image rotation...');
       
       // Get original image info
-      const originalInfo = await FileSystem.getInfoAsync(imageUri);
-      const originalSize = originalInfo.exists ? originalInfo.size || 0 : 0;
+      const originalSize = await getFileSizeWithFallback(imageUri, 0);
       
       const { angle, centerX, centerY, backgroundColor } = rotationOptions;
       
@@ -182,8 +179,7 @@ export class AdvancedImageProcessor {
       );
       
       // Get processed image info
-      const processedInfo = await FileSystem.getInfoAsync(result.uri);
-      const fileSize = processedInfo.exists ? processedInfo.size || 0 : 0;
+      const fileSize = await getFileSizeWithFallback(result.uri, 0);
       
       const processingTime = Date.now() - startTime;
       const compressionRatio = originalSize > 0 ? fileSize / originalSize : 1;
@@ -231,8 +227,7 @@ export class AdvancedImageProcessor {
       console.log('Starting image transformation...');
       
       // Get original image info
-      const originalInfo = await FileSystem.getInfoAsync(imageUri);
-      const originalSize = originalInfo.exists ? originalInfo.size || 0 : 0;
+      const originalSize = await getFileSizeWithFallback(imageUri, 0);
       
       const actions: ImageManipulator.Action[] = [];
       const transformationNames: string[] = [];
@@ -300,8 +295,7 @@ export class AdvancedImageProcessor {
       );
       
       // Get processed image info
-      const processedInfo = await FileSystem.getInfoAsync(result.uri);
-      const fileSize = processedInfo.exists ? processedInfo.size || 0 : 0;
+      const fileSize = await getFileSizeWithFallback(result.uri, 0);
       
       const processingTime = Date.now() - startTime;
       const compressionRatio = originalSize > 0 ? fileSize / originalSize : 1;
@@ -415,8 +409,7 @@ export class AdvancedImageProcessor {
       console.log('Starting image resize...');
       
       // Get original image info
-      const originalInfo = await FileSystem.getInfoAsync(imageUri);
-      const originalSize = originalInfo.exists ? originalInfo.size || 0 : 0;
+      const originalSize = await getFileSizeWithFallback(imageUri, 0);
       
       const actions: ImageManipulator.Action[] = [];
       
@@ -440,8 +433,7 @@ export class AdvancedImageProcessor {
       );
       
       // Get processed image info
-      const processedInfo = await FileSystem.getInfoAsync(result.uri);
-      const fileSize = processedInfo.exists ? processedInfo.size || 0 : 0;
+      const fileSize = await getFileSizeWithFallback(result.uri, 0);
       
       const processingTime = Date.now() - startTime;
       const compressionRatio = originalSize > 0 ? fileSize / originalSize : 1;

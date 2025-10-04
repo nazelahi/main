@@ -1,5 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback, fileExists } from './filesystem';
 
 export interface ColorCorrectionOptions {
   autoWhiteBalance: boolean;
@@ -232,8 +232,7 @@ export class AdvancedImageEnhancement {
       console.log('Starting comprehensive image enhancement...');
       
       // Get original image info
-      const originalInfo = await FileSystem.getInfoAsync(imageUri);
-      const originalSize = originalInfo.exists ? originalInfo.size || 0 : 0;
+      const originalSize = await getFileSizeWithFallback(imageUri, 0);
       
       let currentUri = imageUri;
       const appliedEnhancements: string[] = [];
@@ -286,8 +285,7 @@ export class AdvancedImageEnhancement {
       );
       
       // Get final image info
-      const finalInfo = await FileSystem.getInfoAsync(finalResult.uri);
-      const fileSize = finalInfo.exists ? finalInfo.size || 0 : 0;
+      const fileSize = await getFileSizeWithFallback(finalResult.uri, 0);
       
       const processingTime = Date.now() - startTime;
       const compressionRatio = originalSize > 0 ? fileSize / originalSize : 1;

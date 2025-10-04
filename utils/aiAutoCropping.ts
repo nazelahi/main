@@ -1,5 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback } from './filesystem';
 
 export interface AICropResult {
   success: boolean;
@@ -509,8 +509,7 @@ export class AIAutoCropping {
   private async analyzeImage(imageUri: string, width: number, height: number): Promise<CropAnalysis> {
     try {
       // Get file size for analysis
-      const fileInfo = await FileSystem.getInfoAsync(imageUri);
-      const fileSize = fileInfo.size || 100000;
+      const fileSize = await getFileSizeWithFallback(imageUri, 100000);
       
       // Analyze image for crop analysis
       const analysis = this.analyzeCropCharacteristics(width, height, fileSize);

@@ -1,6 +1,6 @@
 import { Dimensions } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback, fileExists } from './filesystem';
 import RealEdgeDetection from './realEdgeDetection';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -246,8 +246,7 @@ export class EnhancedEdgeDetection {
       }
 
       // Check if file exists
-      const fileInfo = await FileSystem.getInfoAsync(imageUri);
-      if (!fileInfo.exists) {
+      if (!(await fileExists(imageUri))) {
         throw new Error('Image file does not exist');
       }
 
