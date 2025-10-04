@@ -1,5 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import { getFileSizeWithFallback, fileExists } from './filesystem';
 
 export interface DocumentEnhancementOptions {
   contrast?: number;
@@ -406,9 +406,8 @@ export class DocumentProcessor {
    */
   static async detectDocumentEdges(imageUri: string): Promise<DocumentCorners | null> {
     try {
-      // First, get image dimensions
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      if (!imageInfo.exists) {
+      // First, check if image exists
+      if (!(await fileExists(imageUri))) {
         throw new Error('Image file not found');
       }
 
@@ -463,8 +462,7 @@ export class DocumentProcessor {
     try {
       console.log('Starting real edge detection analysis...');
       
-      const imageInfo = await FileSystem.getInfoAsync(imageUri);
-      if (!imageInfo.exists) {
+      if (!(await fileExists(imageUri))) {
         return null;
       }
 

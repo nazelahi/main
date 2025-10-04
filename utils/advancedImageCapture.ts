@@ -130,8 +130,7 @@ export class AdvancedImageCapture {
       const finalImage = await this.finalOptimization(processedImage.uri, captureSettings);
       
       // Get file information
-      const fileInfo = await FileSystem.getInfoAsync(finalImage.uri);
-      const fileSize = fileInfo.exists ? fileInfo.size || 0 : 0;
+      const fileSize = await getFileSizeWithFallback(finalImage.uri, 0);
       
       const processingTime = Date.now() - startTime;
       

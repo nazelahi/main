@@ -1,4 +1,5 @@
 import { Dimensions } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { getFileSizeWithFallback, fileExists } from './filesystem';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
